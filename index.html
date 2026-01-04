@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
-    <title>MyLifeLog Pro</title>
+    <title>MyLifeLog AM/PM</title>
     <style>
         :root {
             --bg-color: #f0f2f5;
@@ -14,166 +14,226 @@
             --accent-blue: #54a0ff;
             --accent-green: #1dd1a1;
             --accent-red: #ee5253;
-            --warning-yellow: #fff3cd;
-            --danger-red: #f8d7da;
+            --accent-purple: #a29bfe;
+            --accent-work: #64748b;
+            --edit-gray: #94a3b8;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; background: var(--bg-color); margin: 0; padding: 20px; color: #333; }
         
-        /* 現在時刻表示 */
-        #nowTime { font-size: 1.2rem; font-weight: bold; margin-bottom: 20px; background: var(--card-bg); padding: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #nowTime { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; background: var(--card-bg); padding: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
-        /* 設定エリア */
-        .settings { background: #e2e8f0; padding: 10px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; }
+        .settings { background: #e2e8f0; padding: 10px; border-radius: 12px; margin-bottom: 15px; font-size: 13px; }
         .settings input { padding: 5px; border-radius: 5px; border: 1px solid #ccc; }
 
-        /* 操作ボタン */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        button.action-btn { padding: 20px 10px; font-size: 15px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        button.action-btn { padding: 15px 5px; font-size: 14px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
         .btn-wake { background: var(--accent-orange); }
         .btn-sleep { background: var(--accent-blue); }
+        .btn-work-start { background: var(--accent-work); }
+        .btn-work-end { background: var(--accent-work); }
         .btn-start { background: var(--accent-green); }
         .btn-end { background: var(--accent-red); }
 
-        /* 記録リスト */
-        .date-group { text-align: left; margin-top: 20px; }
-        .date-header { font-weight: bold; padding: 5px 10px; background: #cbd5e1; border-radius: 6px; margin-bottom: 5px; }
-        .log-list { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
-        .log-item { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .log-item:last-child { border-bottom: none; }
-        
-        .type-label { font-weight: bold; width: 100px; }
-        .time-label { flex-grow: 1; text-align: right; margin-right: 15px; font-family: monospace; }
-        .del-btn { background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; }
+        .memo-area { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #memoInput { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .btn-memo { background: var(--accent-purple); color: white; border: none; padding: 0 15px; border-radius: 8px; font-weight: bold; }
 
-        /* 警告色 */
-        .warning-yellow { background-color: #fffae6 !important; color: #856404; font-weight: bold; }
-        .danger-red { background-color: #fee2e2 !important; color: #b91c1c; font-weight: bold; }
+        .date-group { text-align: left; margin-top: 20px; }
+        .date-header { font-weight: bold; padding: 8px 12px; background: #cbd5e1; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .free-total { font-size: 12px; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
+        
+        .log-list { background: var(--card-bg); border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
+        .log-item { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+        
+        .type-label { font-weight: bold; font-size: 13px; flex-shrink: 1; min-width: 80px; }
+        .time-label { flex-grow: 1; text-align: right; font-family: monospace; font-size: 13px; color: #2563eb; font-weight: bold; }
+        
+        .btn-sm { border: none; padding: 6px 8px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: bold; }
+        .edit-btn { background: var(--edit-gray); color: white; }
+        .del-btn { background: #fecaca; color: #b91c1c; }
+
+        .warning-yellow { background-color: #fffbeb !important; }
+        .danger-red { background-color: #fef2f2 !important; color: #b91c1c; }
     </style>
 </head>
 <body>
 
-    <div id="nowTime">読み込み中...</div>
+    <div id="nowTime">...</div>
 
     <div class="settings">
-        目標就寝時間: <input type="time" id="targetTime" value="00:30" onchange="saveTarget()">
+        目標就寝: <input type="time" id="targetTime" value="00:30" onchange="saveTarget()">
     </div>
 
     <div class="grid">
         <button class="action-btn btn-wake" onclick="addLog('起床')">☀️ 起床</button>
         <button class="action-btn btn-sleep" onclick="addLog('就寝')">🌙 就寝</button>
-        <button class="action-btn btn-start" onclick="addLog('自由時間開始')">🏃 自由開始</button>
-        <button class="action-btn btn-end" onclick="addLog('自由時間終了')">🛑 自由終了</button>
+        <button class="action-btn btn-work-start" onclick="addLog('労働開始')">💼 労働開始</button>
+        <button class="action-btn btn-work-end" onclick="addLog('労働終了')">💼 労働終了</button>
+        <button class="action-btn btn-start" onclick="addLog('自由時間開始')">🏃 自由時間開始</button>
+        <button class="action-btn btn-end" onclick="addLog('自由時間終了')">🛑 自由時間終了</button>
+    </div>
+
+    <div class="memo-area">
+        <input type="text" id="memoInput" placeholder="自由に入力...">
+        <button class="btn-memo" onclick="addMemo()">記録</button>
     </div>
 
     <div id="logContainer"></div>
 
     <script>
-        // 目標時間の保存と読み込み
+        function formatAMPM(date) {
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0'+minutes : minutes;
+            return `${ampm} ${hours}:${minutes}`;
+        }
+
         function saveTarget() {
             localStorage.setItem('targetSleepTime', document.getElementById('targetTime').value);
-            displayLogs(); // 色の反映のため再描画
+            displayLogs();
         }
         function loadTarget() {
             const saved = localStorage.getItem('targetSleepTime');
             if(saved) document.getElementById('targetTime').value = saved;
         }
 
-        // 常に現在時刻を表示
         function updateClock() {
             const now = new Date();
             const days = ['日','月','火','水','木','金','土'];
-            const timeStr = `${now.getMonth()+1}月${now.getDate()}日(${days[now.getDay()]}) ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-            document.getElementById('nowTime').innerText = timeStr;
+            const dateStr = `${now.getMonth()+1}月${now.getDate()}日(${days[now.getDay()]})`;
+            document.getElementById('nowTime').innerText = `${dateStr} ${formatAMPM(now)}`;
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // 記録の追加
         function addLog(type) {
-            const now = new Date();
-            const log = {
-                type: type,
-                rawTimestamp: now.getTime(), // 比較用の生の時刻
-                id: Date.now()
-            };
-            
-            let logs = JSON.parse(localStorage.getItem('myLogsV2') || '[]');
-            logs.unshift(log);
-            localStorage.setItem('myLogsV2', JSON.stringify(logs));
+            saveLog({ type, rawTimestamp: Date.now(), id: Date.now() });
+        }
+
+        function addMemo() {
+            const input = document.getElementById('memoInput');
+            if (!input.value.trim()) return;
+            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now() });
+            input.value = '';
+        }
+
+        function saveLog(log) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            logs.push(log);
+            localStorage.setItem('myLogsSimple', JSON.stringify(logs));
             displayLogs();
         }
 
         function deleteLog(id) {
             if (!confirm('削除しますか？')) return;
-            let logs = JSON.parse(localStorage.getItem('myLogsV2') || '[]');
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             logs = logs.filter(l => l.id !== id);
-            localStorage.setItem('myLogsV2', JSON.stringify(logs));
+            localStorage.setItem('myLogsSimple', JSON.stringify(logs));
             displayLogs();
         }
 
-        // 時刻の論理変換（5:59ルール）
-        function getLogicalInfo(timestamp) {
-            const date = new Date(timestamp);
-            let h = date.getHours();
-            let m = date.getMinutes();
-            let displayDate = new Date(timestamp);
+        function editLog(id) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const idx = logs.findIndex(l => l.id === id);
+            if (idx === -1) return;
 
-            // 0:00 〜 5:59 の場合
-            if (h < 6) {
-                h += 24;
-                displayDate.setDate(displayDate.getDate() - 1);
+            const current = new Date(logs[idx].rawTimestamp);
+            const currentDay = `${current.getFullYear()}-${(current.getMonth()+1).toString().padStart(2,'0')}-${current.getDate().toString().padStart(2,'0')}`;
+            const currentTime24 = `${current.getHours().toString().padStart(2,'0')}:${current.getMinutes().toString().padStart(2,'0')}`;
+            
+            const mode = prompt("1:時刻修正(24h形式) / 2:日付修正", "1");
+            if (mode === "1") {
+                const val = prompt("時刻を入力 (例 14:30)", currentTime24);
+                if (val && /^\d{1,2}:\d{2}$/.test(val)) {
+                    const [h, m] = val.split(':').map(Number);
+                    current.setHours(h); current.setMinutes(m);
+                } else return;
+            } else if (mode === "2") {
+                const val = prompt("日付を入力 (YYYY-MM-DD)", currentDay);
+                if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                    const [y, m, d] = val.split('-').map(Number);
+                    current.setFullYear(y); current.setMonth(m-1); current.setDate(d);
+                } else return;
+            } else return;
+
+            if (confirm("変更を保存しますか？")) {
+                logs[idx].rawTimestamp = current.getTime();
+                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                displayLogs();
             }
-
-            const dateStr = `${displayDate.getMonth()+1}月${displayDate.getDate()}日`;
-            const timeStr = `${h}:${m.toString().padStart(2, '0')}`;
-            const totalMinutes = h * 60 + m; // 比較用の通算分
-
-            return { dateStr, timeStr, totalMinutes };
         }
 
         function displayLogs() {
-            const logs = JSON.parse(localStorage.getItem('myLogsV2') || '[]');
+            const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const container = document.getElementById('logContainer');
             container.innerHTML = '';
 
-            const targetTimeStr = document.getElementById('targetTime').value; // "00:30"
-            const [targetH, targetM] = targetTimeStr.split(':').map(Number);
-            let logicalTargetMins = targetH * 60 + targetM;
-            if (targetH < 6) logicalTargetMins += 24 * 60; // 目標も5:59ルールで変換
+            const targetTimeStr = document.getElementById('targetTime').value;
+            const [tH, tM] = targetTimeStr.split(':').map(Number);
+            const targetTotal = tH * 60 + tM;
 
-            // 日付ごとにグループ化
             const groups = {};
             logs.forEach(log => {
-                const info = getLogicalInfo(log.rawTimestamp);
-                if (!groups[info.dateStr]) groups[info.dateStr] = [];
-                groups[info.dateStr].push({ ...log, ...info });
+                const d = new Date(log.rawTimestamp);
+                const dateKey = `${d.getMonth()+1}月${d.getDate()}日`;
+                if (!groups[dateKey]) groups[dateKey] = [];
+                groups[dateKey].push({
+                    ...log,
+                    timeStr: formatAMPM(d),
+                    totalMins: d.getHours() * 60 + d.getMinutes()
+                });
             });
 
-            if (Object.keys(groups).length === 0) {
+            const sortedDates = Object.keys(groups).sort((a, b) => {
+                return groups[b][0].rawTimestamp - groups[a][0].rawTimestamp;
+            });
+
+            if (sortedDates.length === 0) {
                 container.innerHTML = '<p style="color:#999;">記録がありません</p>';
                 return;
             }
 
-            for (const date in groups) {
-                let html = `<div class="date-group"><div class="date-header">${date}</div><div class="log-list">`;
-                groups[date].forEach(l => {
-                    let alertClass = '';
-                    if (l.type === '就寝') {
-                        const diff = l.totalMinutes - logicalTargetMins;
-                        if (diff >= 45) alertClass = 'danger-red';
-                        else if (diff >= 15) alertClass = 'warning-yellow';
+            sortedDates.forEach(date => {
+                const dayLogs = groups[date].sort((a,b) => a.rawTimestamp - b.rawTimestamp);
+                
+                let freeMins = 0;
+                let startTime = null;
+                dayLogs.forEach(l => {
+                    if (l.type === '自由時間開始') startTime = l.rawTimestamp;
+                    else if (l.type === '自由時間終了' && startTime) {
+                        freeMins += (l.rawTimestamp - startTime) / 60000;
+                        startTime = null;
                     }
+                });
 
+                let html = `
+                    <div class="date-group">
+                        <div class="date-header">
+                            <span>${date}</span>
+                            <span class="free-total">自由: ${Math.floor(freeMins/60)}h ${Math.floor(freeMins%60)}m</span>
+                        </div>
+                        <div class="log-list">`;
+                
+                dayLogs.forEach(l => {
+                    let cls = '';
+                    if (l.type === '就寝') {
+                        const diff = l.totalMins - targetTotal;
+                        if (diff >= 45 || diff <= -1395) cls = 'danger-red';
+                        else if (diff >= 15 || diff <= -1425) cls = 'warning-yellow';
+                    }
                     html += `
-                        <div class="log-item ${alertClass}">
+                        <div class="log-item ${cls}">
                             <span class="type-label">${l.type}</span>
                             <span class="time-label">${l.timeStr}</span>
-                            <button class="del-btn" onclick="deleteLog(${l.id})">消去</button>
+                            <button class="btn-sm edit-btn" onclick="editLog(${l.id})">修正</button>
+                            <button class="btn-sm del-btn" onclick="deleteLog(${l.id})">消去</button>
                         </div>`;
                 });
-                html += `</div></div>`;
-                container.innerHTML += html;
-            }
+                container.innerHTML += html + `</div></div>`;
+            });
         }
 
         loadTarget();
