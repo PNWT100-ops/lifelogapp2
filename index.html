@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
-    <title>MyLifeLog AM/PM</title>
+    <title>MyLifeLog Pro V6</title>
     <style>
         :root {
             --bg-color: #f0f2f5;
@@ -19,51 +19,37 @@
             --edit-gray: #94a3b8;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; background: var(--bg-color); margin: 0; padding: 20px; color: #333; }
-        
         #nowTime { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; background: var(--card-bg); padding: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-
         .settings { background: #e2e8f0; padding: 10px; border-radius: 12px; margin-bottom: 15px; font-size: 13px; }
-        .settings input { padding: 5px; border-radius: 5px; border: 1px solid #ccc; }
-
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         button.action-btn { padding: 15px 5px; font-size: 14px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
         .btn-wake { background: var(--accent-orange); }
         .btn-sleep { background: var(--accent-blue); }
-        .btn-work-start { background: var(--accent-work); }
-        .btn-work-end { background: var(--accent-work); }
+        .btn-work-start, .btn-work-end { background: var(--accent-work); }
         .btn-start { background: var(--accent-green); }
         .btn-end { background: var(--accent-red); }
-
-        .memo-area { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        #memoInput { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-        .btn-memo { background: var(--accent-purple); color: white; border: none; padding: 0 15px; border-radius: 8px; font-weight: bold; }
-
+        .memo-area { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        #memoInput { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .memo-btns { display: flex; gap: 8px; }
+        .btn-memo { flex: 1; background: var(--accent-purple); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; }
+        .btn-todo { flex: 1; background: #636e72; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; }
         .date-group { text-align: left; margin-top: 20px; }
         .date-header { font-weight: bold; padding: 8px 12px; background: #cbd5e1; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
         .free-total { font-size: 12px; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
-        
         .log-list { background: var(--card-bg); border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
-        .log-item { border-bottom: 1px solid #eee; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 5px; }
-        
-        .type-label { font-weight: bold; font-size: 13px; flex-shrink: 1; min-width: 80px; }
-        .time-label { flex-grow: 1; text-align: right; font-family: monospace; font-size: 13px; color: #2563eb; font-weight: bold; }
-        
-        .btn-sm { border: none; padding: 6px 8px; border-radius: 6px; font-size: 10px; cursor: pointer; font-weight: bold; }
-        .edit-btn { background: var(--edit-gray); color: white; }
-        .del-btn { background: #fecaca; color: #b91c1c; }
-
+        .log-item { border-bottom: 1px solid #eee; padding: 10px; display: flex; align-items: center; gap: 4px; }
+        .type-label { font-weight: bold; font-size: 13px; flex-grow: 1; text-align: left; }
+        .time-label { font-family: monospace; font-size: 12px; color: #2563eb; font-weight: bold; width: 75px; text-align: right; }
+        .icon-btn-wrap { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 6px; border: none; font-size: 16px; flex-shrink: 0; }
+        .icon-btn-wrap input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .del-btn { color: #ee5253; font-weight: bold; font-size: 18px; }
         .warning-yellow { background-color: #fffbeb !important; }
         .danger-red { background-color: #fef2f2 !important; color: #b91c1c; }
     </style>
 </head>
 <body>
-
     <div id="nowTime">...</div>
-
-    <div class="settings">
-        目標就寝: <input type="time" id="targetTime" value="00:30" onchange="saveTarget()">
-    </div>
-
+    <div class="settings">目標就寝: <input type="time" id="targetTime" value="00:30" onchange="saveTarget()"></div>
     <div class="grid">
         <button class="action-btn btn-wake" onclick="addLog('起床')">☀️ 起床</button>
         <button class="action-btn btn-sleep" onclick="addLog('就寝')">🌙 就寝</button>
@@ -72,51 +58,39 @@
         <button class="action-btn btn-start" onclick="addLog('自由時間開始')">🏃 自由時間開始</button>
         <button class="action-btn btn-end" onclick="addLog('自由時間終了')">🛑 自由時間終了</button>
     </div>
-
     <div class="memo-area">
         <input type="text" id="memoInput" placeholder="自由に入力...">
-        <button class="btn-memo" onclick="addMemo()">記録</button>
+        <div class="memo-btns">
+            <button class="btn-memo" onclick="addMemo(false)">記録</button>
+            <button class="btn-todo" onclick="addMemo(true)">ToDo</button>
+        </div>
     </div>
-
     <div id="logContainer"></div>
 
     <script>
         function formatAMPM(date) {
-            let hours = date.getHours();
-            let minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12;
-            minutes = minutes < 10 ? '0'+minutes : minutes;
-            return `${ampm} ${hours}:${minutes}`;
+            let h = date.getHours();
+            let m = date.getMinutes();
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+            return `${ampm} ${h}:${m.toString().padStart(2, '0')}`;
         }
-
-        function saveTarget() {
-            localStorage.setItem('targetSleepTime', document.getElementById('targetTime').value);
-            displayLogs();
-        }
-        function loadTarget() {
-            const saved = localStorage.getItem('targetSleepTime');
-            if(saved) document.getElementById('targetTime').value = saved;
-        }
-
+        function saveTarget() { localStorage.setItem('targetSleepTime', document.getElementById('targetTime').value); displayLogs(); }
+        function loadTarget() { const saved = localStorage.getItem('targetSleepTime'); if(saved) document.getElementById('targetTime').value = saved; }
+        
         function updateClock() {
             const now = new Date();
             const days = ['日','月','火','水','木','金','土'];
-            const dateStr = `${now.getMonth()+1}月${now.getDate()}日(${days[now.getDay()]})`;
-            document.getElementById('nowTime').innerText = `${dateStr} ${formatAMPM(now)}`;
+            document.getElementById('nowTime').innerText = `${now.getMonth()+1}/${now.getDate()}(${days[now.getDay()]}) ${formatAMPM(now)}`;
         }
-        setInterval(updateClock, 1000);
+        setInterval(updateClock, 1000); 
         updateClock();
 
-        function addLog(type) {
-            saveLog({ type, rawTimestamp: Date.now(), id: Date.now() });
-        }
-
-        function addMemo() {
+        function addLog(type) { saveLog({ type, rawTimestamp: Date.now(), id: Date.now(), hideTime: false }); }
+        function addMemo(isTodo) {
             const input = document.getElementById('memoInput');
             if (!input.value.trim()) return;
-            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now() });
+            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo });
             input.value = '';
         }
 
@@ -127,40 +101,28 @@
             displayLogs();
         }
 
-        function deleteLog(id) {
-            if (!confirm('削除しますか？')) return;
+        function deleteLog(id) { if (confirm('削除しますか？')) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
-            logs = logs.filter(l => l.id !== id);
-            localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+            localStorage.setItem('myLogsSimple', JSON.stringify(logs.filter(l => l.id !== id)));
             displayLogs();
-        }
+        }}
 
-        function editLog(id) {
+        function updateRaw(id, newDateObj) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const idx = logs.findIndex(l => l.id === id);
-            if (idx === -1) return;
+            if (idx !== -1) {
+                logs[idx].rawTimestamp = newDateObj.getTime();
+                logs[idx].hideTime = false; 
+                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                displayLogs();
+            }
+        }
 
-            const current = new Date(logs[idx].rawTimestamp);
-            const currentDay = `${current.getFullYear()}-${(current.getMonth()+1).toString().padStart(2,'0')}-${current.getDate().toString().padStart(2,'0')}`;
-            const currentTime24 = `${current.getHours().toString().padStart(2,'0')}:${current.getMinutes().toString().padStart(2,'0')}`;
-            
-            const mode = prompt("1:時刻修正(24h形式) / 2:日付修正", "1");
-            if (mode === "1") {
-                const val = prompt("時刻を入力 (例 14:30)", currentTime24);
-                if (val && /^\d{1,2}:\d{2}$/.test(val)) {
-                    const [h, m] = val.split(':').map(Number);
-                    current.setHours(h); current.setMinutes(m);
-                } else return;
-            } else if (mode === "2") {
-                const val = prompt("日付を入力 (YYYY-MM-DD)", currentDay);
-                if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-                    const [y, m, d] = val.split('-').map(Number);
-                    current.setFullYear(y); current.setMonth(m-1); current.setDate(d);
-                } else return;
-            } else return;
-
-            if (confirm("変更を保存しますか？")) {
-                logs[idx].rawTimestamp = current.getTime();
+        function toggleHide(id) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const idx = logs.findIndex(l => l.id === id);
+            if (idx !== -1) {
+                logs[idx].hideTime = !logs[idx].hideTime;
                 localStorage.setItem('myLogsSimple', JSON.stringify(logs));
                 displayLogs();
             }
@@ -170,9 +132,9 @@
             const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const container = document.getElementById('logContainer');
             container.innerHTML = '';
-
-            const targetTimeStr = document.getElementById('targetTime').value;
-            const [tH, tM] = targetTimeStr.split(':').map(Number);
+            
+            const targetVal = document.getElementById('targetTime').value;
+            const [tH, tM] = targetVal.split(':').map(Number);
             const targetTotal = tH * 60 + tM;
 
             const groups = {};
@@ -180,63 +142,58 @@
                 const d = new Date(log.rawTimestamp);
                 const dateKey = `${d.getMonth()+1}月${d.getDate()}日`;
                 if (!groups[dateKey]) groups[dateKey] = [];
-                groups[dateKey].push({
-                    ...log,
-                    timeStr: formatAMPM(d),
-                    totalMins: d.getHours() * 60 + d.getMinutes()
-                });
+                groups[dateKey].push({ ...log, dateObj: d });
             });
 
-            const sortedDates = Object.keys(groups).sort((a, b) => {
+            const sortedDateKeys = Object.keys(groups).sort((a, b) => {
                 return groups[b][0].rawTimestamp - groups[a][0].rawTimestamp;
             });
 
-            if (sortedDates.length === 0) {
-                container.innerHTML = '<p style="color:#999;">記録がありません</p>';
-                return;
-            }
-
-            sortedDates.forEach(date => {
-                const dayLogs = groups[date].sort((a,b) => a.rawTimestamp - b.rawTimestamp);
+            sortedDateKeys.forEach(date => {
+                const dayLogs = groups[date].sort((a, b) => {
+                    if (a.hideTime && !b.hideTime) return -1;
+                    if (!a.hideTime && b.hideTime) return 1;
+                    return a.rawTimestamp - b.rawTimestamp;
+                });
                 
-                let freeMins = 0;
-                let startTime = null;
+                let freeMins = 0; let startTime = null;
                 dayLogs.forEach(l => {
                     if (l.type === '自由時間開始') startTime = l.rawTimestamp;
-                    else if (l.type === '自由時間終了' && startTime) {
-                        freeMins += (l.rawTimestamp - startTime) / 60000;
-                        startTime = null;
+                    else if (l.type === '自由時間終了' && startTime) { 
+                        freeMins += (l.rawTimestamp - startTime) / 60000; 
+                        startTime = null; 
                     }
                 });
 
-                let html = `
-                    <div class="date-group">
-                        <div class="date-header">
-                            <span>${date}</span>
-                            <span class="free-total">自由: ${Math.floor(freeMins/60)}h ${Math.floor(freeMins%60)}m</span>
-                        </div>
-                        <div class="log-list">`;
+                let html = `<div class="date-group"><div class="date-header"><span>${date}</span><span class="free-total">自由: ${Math.floor(freeMins/60)}h ${Math.floor(freeMins%60)}m</span></div><div class="log-list">`;
                 
                 dayLogs.forEach(l => {
+                    const time24 = `${l.dateObj.getHours().toString().padStart(2,'0')}:${l.dateObj.getMinutes().toString().padStart(2,'0')}`;
+                    const dateISO = `${l.dateObj.getFullYear()}-${(l.dateObj.getMonth()+1).toString().padStart(2,'0')}-${l.dateObj.getDate().toString().padStart(2,'0')}`;
                     let cls = '';
-                    if (l.type === '就寝') {
-                        const diff = l.totalMins - targetTotal;
+                    if (l.type === '就寝' && !l.hideTime) {
+                        const currentTotal = l.dateObj.getHours() * 60 + l.dateObj.getMinutes();
+                        const diff = currentTotal - targetTotal;
                         if (diff >= 45 || diff <= -1395) cls = 'danger-red';
                         else if (diff >= 15 || diff <= -1425) cls = 'warning-yellow';
                     }
-                    html += `
-                        <div class="log-item ${cls}">
-                            <span class="type-label">${l.type}</span>
-                            <span class="time-label">${l.timeStr}</span>
-                            <button class="btn-sm edit-btn" onclick="editLog(${l.id})">修正</button>
-                            <button class="btn-sm del-btn" onclick="deleteLog(${l.id})">消去</button>
-                        </div>`;
+                    
+                    // ToDo項目にピンの絵文字を追加
+                    const typeDisplay = l.hideTime ? `📌 ${l.type}` : l.type;
+                    
+                    html += `<div class="log-item ${cls}">
+                        <span class="type-label">${typeDisplay}</span>
+                        <span class="time-label">${l.hideTime ? '' : formatAMPM(l.dateObj)}</span>
+                        <div class="icon-btn-wrap">⌚<input type="time" value="${time24}" onchange="const d=new Date(${l.rawTimestamp}); const [h,m]=this.value.split(':'); d.setHours(h,m); updateRaw(${l.id}, d)"></div>
+                        <div class="icon-btn-wrap">📅<input type="date" value="${dateISO}" onchange="const d=new Date(${l.rawTimestamp}); const [y,m,day]=this.value.split('-'); d.setFullYear(y,m-1,day); updateRaw(${l.id}, d)"></div>
+                        <button class="icon-btn-wrap" onclick="toggleHide(${l.id})">⌛</button>
+                        <button class="icon-btn-wrap del-btn" onclick="deleteLog(${l.id})">×</button>
+                    </div>`;
                 });
                 container.innerHTML += html + `</div></div>`;
             });
         }
-
-        loadTarget();
+        loadTarget(); 
         displayLogs();
     </script>
 </body>
