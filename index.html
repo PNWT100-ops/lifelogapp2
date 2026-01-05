@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
-    <title>MyLifeLog Pro V11</title>
+    <title>MyLifeLog Pro V13</title>
     <style>
         :root {
             --bg-color: #f0f2f5;
@@ -16,7 +16,6 @@
             --accent-red: #ee5253;
             --accent-purple: #a29bfe;
             --accent-work: #64748b;
-            --edit-gray: #94a3b8;
             --log-blue: #dbeafe;
             --log-green: #dcfce7;
             --log-gray: #f1f5f9;
@@ -38,16 +37,30 @@
         .memo-btns { display: flex; gap: 8px; }
         .btn-memo { flex: 1; background: var(--accent-purple); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; }
         .btn-todo { flex: 1; background: #636e72; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; }
-        .date-group { text-align: left; margin-top: 20px; }
-        .date-header { font-weight: bold; padding: 8px 12px; background: #cbd5e1; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+
+        .date-group { text-align: left; margin-top: 25px; }
+        .date-header { font-weight: bold; padding: 10px 12px; background: #cbd5e1; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; }
         .free-total { font-size: 12px; color: #475569; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
-        .log-list { background: var(--card-bg); border-radius: 0 0 12px 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
+        
+        .section-label { font-size: 12px; font-weight: bold; color: #64748b; padding: 8px 12px 4px; background: #f8fafc; border-left: 1px solid #eee; border-right: 1px solid #eee; }
+        .todo-list, .log-list { background: var(--card-bg); border-left: 1px solid #eee; border-right: 1px solid #eee; overflow: hidden; }
+        .log-list { border-radius: 0 0 12px 12px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
+
         .log-item { border-bottom: 1px solid #eee; padding: 10px; display: flex; align-items: center; gap: 4px; }
+        
+        /* Todo専用スタイル */
+        .todo-check { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
+        .todo-text { font-size: 14px; font-weight: bold; flex-grow: 1; padding: 0 8px; }
+        .todo-text.completed { text-decoration: line-through; color: #94a3b8; font-weight: normal; }
+        
         .type-label { font-weight: bold; font-size: 13px; flex-grow: 1; text-align: left; }
         .time-label { font-family: monospace; font-size: 12px; color: #2563eb; font-weight: bold; width: 75px; text-align: right; }
+        
         .icon-btn-wrap { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 6px; border: none; font-size: 16px; flex-shrink: 0; }
         .icon-btn-wrap input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .del-btn { color: #ee5253; font-weight: bold; font-size: 18px; }
+
+        /* 背景色 */
         .bg-blue { background-color: var(--log-blue) !important; }
         .bg-green { background-color: var(--log-green) !important; }
         .bg-gray { background-color: var(--log-gray) !important; }
@@ -77,8 +90,7 @@
 
     <script>
         function formatAMPM(date) {
-            let h = date.getHours();
-            let m = date.getMinutes();
+            let h = date.getHours(); let m = date.getMinutes();
             const ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
             return `${ampm} ${h}:${m.toString().padStart(2, '0')}`;
@@ -91,14 +103,13 @@
             const days = ['日','月','火','水','木','金','土'];
             document.getElementById('nowTime').innerText = `${now.getMonth()+1}/${now.getDate()}(${days[now.getDay()]}) ${formatAMPM(now)}`;
         }
-        setInterval(updateClock, 1000); 
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
 
-        function addLog(type) { saveLog({ type, rawTimestamp: Date.now(), id: Date.now(), hideTime: false, isTodo: false }); }
+        function addLog(type) { saveLog({ type, rawTimestamp: Date.now(), id: Date.now(), hideTime: false, isTodo: false, completed: false }); }
         function addMemo(isTodo) {
             const input = document.getElementById('memoInput');
             if (!input.value.trim()) return;
-            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo });
+            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo, completed: false });
             input.value = '';
         }
         function saveLog(log) {
@@ -122,6 +133,18 @@
                 displayLogs();
             }
         }
+        function editTodoText(id) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const idx = logs.findIndex(l => l.id === id);
+            if (idx !== -1) {
+                const newText = prompt("ToDoを編集:", logs[idx].type);
+                if (newText !== null && newText.trim() !== "") {
+                    logs[idx].type = newText;
+                    localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                    displayLogs();
+                }
+            }
+        }
         function toggleHide(id) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const idx = logs.findIndex(l => l.id === id);
@@ -131,13 +154,21 @@
                 displayLogs();
             }
         }
+        function toggleTodo(id) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const idx = logs.findIndex(l => l.id === id);
+            if (idx !== -1) {
+                logs[idx].completed = !logs[idx].completed;
+                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                displayLogs();
+            }
+        }
 
         function displayLogs() {
             const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const container = document.getElementById('logContainer');
             container.innerHTML = '';
-            const targetVal = document.getElementById('targetTime').value;
-            const [tH, tM] = targetVal.split(':').map(Number);
+            const [tH, tM] = document.getElementById('targetTime').value.split(':').map(Number);
             
             const groups = {};
             logs.forEach(log => {
@@ -147,43 +178,50 @@
                 groups[dateKey].push({ ...log, dateObj: d });
             });
 
-            const sortedDateKeys = Object.keys(groups).sort((a, b) => groups[b][0].rawTimestamp - groups[a][0].rawTimestamp);
-
-            sortedDateKeys.forEach(date => {
-                // ソート条件: ToDo(isTodo)を最優先で上に、それ以外を時刻順に。
-                const dayLogs = groups[date].sort((a, b) => {
-                    if (a.isTodo !== b.isTodo) return a.isTodo ? -1 : 1;
-                    return a.rawTimestamp - b.rawTimestamp;
-                });
+            Object.keys(groups).sort((a, b) => groups[b][0].rawTimestamp - groups[a][0].rawTimestamp).forEach(date => {
+                const dayItems = groups[date].sort((a, b) => a.rawTimestamp - b.rawTimestamp);
+                const todos = dayItems.filter(i => i.isTodo);
+                const tlogs = dayItems.filter(i => !i.isTodo);
                 
                 let freeMins = 0; let startTime = null;
-                dayLogs.forEach(l => {
+                tlogs.forEach(l => {
                     if (l.type === '自由時間開始') startTime = l.rawTimestamp;
                     else if (l.type === '自由時間終了' && startTime) { freeMins += (l.rawTimestamp - startTime) / 60000; startTime = null; }
                 });
 
-                let html = `<div class="date-group"><div class="date-header"><span>${date}</span><span class="free-total">自由: ${Math.floor(freeMins/60)}h ${Math.floor(freeMins%60)}m</span></div><div class="log-list">`;
+                let html = `<div class="date-group"><div class="date-header"><span>${date}</span><span class="free-total">自由: ${Math.floor(freeMins/60)}h ${Math.floor(freeMins%60)}m</span></div>`;
                 
-                dayLogs.forEach(l => {
+                // --- ToDoセクション (時計・日付・砂時計なし) ---
+                if(todos.length > 0) {
+                    html += `<div class="section-label">📌 ToDo</div><div class="todo-list">`;
+                    todos.forEach(l => {
+                        html += `<div class="log-item">
+                            <input type="checkbox" class="todo-check" ${l.completed ? 'checked' : ''} onclick="toggleTodo(${l.id})">
+                            <span class="todo-text ${l.completed ? 'completed' : ''}">${l.type}</span>
+                            <button class="icon-btn-wrap" onclick="editTodoText(${l.id})">📝</button>
+                            <button class="icon-btn-wrap del-btn" onclick="deleteLog(${l.id})">×</button>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                }
+
+                // --- タイムログセクション ---
+                html += `<div class="section-label">🕒 タイムログ</div><div class="log-list">`;
+                tlogs.forEach(l => {
                     const time24 = `${l.dateObj.getHours().toString().padStart(2,'0')}:${l.dateObj.getMinutes().toString().padStart(2,'0')}`;
                     const dateISO = `${l.dateObj.getFullYear()}-${(l.dateObj.getMonth()+1).toString().padStart(2,'0')}-${l.dateObj.getDate().toString().padStart(2,'0')}`;
                     let bgClass = '';
                     if (l.type === '就寝') {
-                        const targetTotalMinutes = tH * 60 + tM;
-                        const currentTotalMinutes = l.dateObj.getHours() * 60 + l.dateObj.getMinutes();
-                        let diff = (currentTotalMinutes - targetTotalMinutes + 1440) % 1440;
+                        let diff = (l.dateObj.getHours()*60+l.dateObj.getMinutes() - (tH*60+tM) + 1440) % 1440;
                         if (diff > 720) diff -= 1440;
                         if (diff <= 15) bgClass = 'bg-blue';
                         else if (diff < 45) bgClass = 'bg-yellow';
                         else bgClass = 'bg-red';
-                    } else if (l.type.includes('自由時間')) {
-                        bgClass = 'bg-green';
-                    } else if (l.type.includes('労働')) {
-                        bgClass = 'bg-gray';
-                    }
+                    } else if (l.type.includes('自由時間')) bgClass = 'bg-green';
+                    else if (l.type.includes('労働')) bgClass = 'bg-gray';
                     
                     html += `<div class="log-item ${bgClass}">
-                        <span class="type-label">${l.isTodo ? '📌 ' : ''}${l.type}</span>
+                        <span class="type-label">${l.type}</span>
                         <span class="time-label">${l.hideTime ? '' : formatAMPM(l.dateObj)}</span>
                         <div class="icon-btn-wrap">⌚<input type="time" value="${time24}" onchange="const d=new Date(${l.rawTimestamp}); const [h,m]=this.value.split(':'); d.setHours(h,m); updateRawNoConfirm(${l.id}, d)"></div>
                         <div class="icon-btn-wrap">📅<input type="date" value="${dateISO}" onchange="const d=new Date(${l.rawTimestamp}); const [y,m,day]=this.value.split('-'); d.setFullYear(y,m-1,day); updateRawNoConfirm(${l.id}, d)"></div>
@@ -191,7 +229,8 @@
                         <button class="icon-btn-wrap del-btn" onclick="deleteLog(${l.id})">×</button>
                     </div>`;
                 });
-                container.innerHTML += html + `</div></div>`;
+                html += `</div></div>`;
+                container.innerHTML += html;
             });
         }
         loadTarget(); displayLogs();
