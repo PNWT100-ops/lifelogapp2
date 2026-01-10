@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
-    <title>MyLifeLog Pro V15</title>
+    <title>MyLifeLog Pro V13</title>
     <style>
         :root {
             --bg-color: #f0f2f5;
@@ -32,11 +32,8 @@
         .btn-work-start, .btn-work-end { background: var(--accent-work); }
         .btn-start { background: var(--accent-green); }
         .btn-end { background: var(--accent-red); }
-        
         .memo-area { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .input-row { display: flex; gap: 8px; }
-        #memoInput { flex-grow: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
-        #todoTimeInput { width: 70px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-align: center; }
+        #memoInput { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         .memo-btns { display: flex; gap: 8px; }
         .btn-memo { flex: 1; background: var(--accent-purple); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; }
         .btn-todo { flex: 1; background: #636e72; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; }
@@ -48,20 +45,22 @@
         .section-label { font-size: 12px; font-weight: bold; color: #64748b; padding: 8px 12px 4px; background: #f8fafc; border-left: 1px solid #eee; border-right: 1px solid #eee; }
         .todo-list, .log-list { background: var(--card-bg); border-left: 1px solid #eee; border-right: 1px solid #eee; overflow: hidden; }
         .log-list { border-radius: 0 0 12px 12px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
+
         .log-item { border-bottom: 1px solid #eee; padding: 10px; display: flex; align-items: center; gap: 4px; }
         
-        /* Todoリスト内の入力欄スタイル */
+        /* Todo専用スタイル */
         .todo-check { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
         .todo-text { font-size: 14px; font-weight: bold; flex-grow: 1; padding: 0 8px; }
         .todo-text.completed { text-decoration: line-through; color: #94a3b8; font-weight: normal; }
-        .todo-est-inline { width: 45px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; padding: 4px 2px; text-align: center; font-family: monospace; background: #f8fafc; }
-
+        
         .type-label { font-weight: bold; font-size: 13px; flex-grow: 1; text-align: left; }
         .time-label { font-family: monospace; font-size: 12px; color: #2563eb; font-weight: bold; width: 75px; text-align: right; }
+        
         .icon-btn-wrap { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; border-radius: 6px; border: none; font-size: 16px; flex-shrink: 0; }
         .icon-btn-wrap input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
         .del-btn { color: #ee5253; font-weight: bold; font-size: 18px; }
 
+        /* 背景色 */
         .bg-blue { background-color: var(--log-blue) !important; }
         .bg-green { background-color: var(--log-green) !important; }
         .bg-gray { background-color: var(--log-gray) !important; }
@@ -81,10 +80,7 @@
         <button class="action-btn btn-end" onclick="addLog('自由時間終了')">🛑 自由時間終了</button>
     </div>
     <div class="memo-area">
-        <div class="input-row">
-            <input type="text" id="memoInput" placeholder="タスク・内容を入力...">
-            <input type="number" id="todoTimeInput" placeholder="分" min="0">
-        </div>
+        <input type="text" id="memoInput" placeholder="自由に入力...">
         <div class="memo-btns">
             <button class="btn-memo" onclick="addMemo(false)">記録</button>
             <button class="btn-todo" onclick="addMemo(true)">ToDo</button>
@@ -109,22 +105,12 @@
         }
         setInterval(updateClock, 1000); updateClock();
 
-        function addLog(type) { saveLog({ type, rawTimestamp: Date.now(), id: Date.now(), hideTime: false, isTodo: false, completed: false, est: "" }); }
+        function addLog(type) { saveLog({ type, rawTimestamp: Date.now(), id: Date.now(), hideTime: false, isTodo: false, completed: false }); }
         function addMemo(isTodo) {
             const input = document.getElementById('memoInput');
-            const timeInput = document.getElementById('todoTimeInput');
             if (!input.value.trim()) return;
-            saveLog({ 
-                type: input.value, 
-                rawTimestamp: Date.now(), 
-                id: Date.now(), 
-                hideTime: isTodo, 
-                isTodo: isTodo, 
-                completed: false,
-                est: timeInput.value 
-            });
+            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo, completed: false });
             input.value = '';
-            timeInput.value = '';
         }
         function saveLog(log) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
@@ -147,7 +133,6 @@
                 displayLogs();
             }
         }
-        // ToDoのテキスト編集
         function editTodoText(id) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const idx = logs.findIndex(l => l.id === id);
@@ -160,15 +145,13 @@
                 }
             }
         }
-        // ToDoの時間（分）だけを更新
-        function updateTodoEst(id, newEst) {
+        function toggleHide(id) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const idx = logs.findIndex(l => l.id === id);
             if (idx !== -1) {
-                logs[idx].est = newEst;
+                logs[idx].hideTime = !logs[idx].hideTime;
                 localStorage.setItem('myLogsSimple', JSON.stringify(logs));
-                // 再描画するとフォーカスが外れるため、保存のみ行い表示はそのままにするか、
-                // 必要に応じて displayLogs() を呼んでください
+                displayLogs();
             }
         }
         function toggleTodo(id) {
@@ -180,28 +163,17 @@
                 displayLogs();
             }
         }
-        function toggleHide(id) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
-            const idx = logs.findIndex(l => l.id === id);
-            if (idx !== -1) {
-                logs[idx].hideTime = !logs[idx].hideTime;
-                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
-                displayLogs();
-            }
-        }
 
         function displayLogs() {
             const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const container = document.getElementById('logContainer');
             container.innerHTML = '';
             const [tH, tM] = document.getElementById('targetTime').value.split(':').map(Number);
-            const todayKey = `${new Date().getMonth()+1}月${new Date().getDate()}日`;
             
             const groups = {};
             logs.forEach(log => {
                 const d = new Date(log.rawTimestamp);
-                let dateKey = `${d.getMonth()+1}月${d.getDate()}日`;
-                if (log.isTodo && !log.completed) dateKey = todayKey;
+                const dateKey = `${d.getMonth()+1}月${d.getDate()}日`;
                 if (!groups[dateKey]) groups[dateKey] = [];
                 groups[dateKey].push({ ...log, dateObj: d });
             });
@@ -219,13 +191,13 @@
 
                 let html = `<div class="date-group"><div class="date-header"><span>${date}</span><span class="free-total">自由: ${Math.floor(freeMins/60)}h ${Math.floor(freeMins%60)}m</span></div>`;
                 
+                // --- ToDoセクション (時計・日付・砂時計なし) ---
                 if(todos.length > 0) {
                     html += `<div class="section-label">📌 ToDo</div><div class="todo-list">`;
                     todos.forEach(l => {
                         html += `<div class="log-item">
                             <input type="checkbox" class="todo-check" ${l.completed ? 'checked' : ''} onclick="toggleTodo(${l.id})">
                             <span class="todo-text ${l.completed ? 'completed' : ''}">${l.type}</span>
-                            <input type="number" class="todo-est-inline" value="${l.est || ''}" placeholder="分" onchange="updateTodoEst(${l.id}, this.value)">
                             <button class="icon-btn-wrap" onclick="editTodoText(${l.id})">📝</button>
                             <button class="icon-btn-wrap del-btn" onclick="deleteLog(${l.id})">×</button>
                         </div>`;
@@ -233,6 +205,7 @@
                     html += `</div>`;
                 }
 
+                // --- タイムログセクション ---
                 html += `<div class="section-label">🕒 タイムログ</div><div class="log-list">`;
                 tlogs.forEach(l => {
                     const time24 = `${l.dateObj.getHours().toString().padStart(2,'0')}:${l.dateObj.getMinutes().toString().padStart(2,'0')}`;
