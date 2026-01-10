@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
-    <title>MyLifeLog Pro V16</title>
+    <title>MyLifeLog Pro V17</title>
     <style>
         :root {
             --bg-color: #f0f2f5;
@@ -92,12 +92,32 @@
     <div id="logContainer"></div>
 
     <script>
+        const STORAGE_KEY = 'myLogsSimple';
+
+        // データの整合性を保つための修復関数
+        function getSafeLogs() {
+            let logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            return logs.map(log => {
+                return {
+                    type: log.type || "無題",
+                    rawTimestamp: log.rawTimestamp || Date.now(),
+                    id: log.id || Date.now() + Math.random(),
+                    hideTime: log.hideTime || false,
+                    isTodo: log.isTodo || false,
+                    completed: log.completed || false,
+                    est: log.est || ""
+                };
+            });
+        }
+
         function formatAMPM(date) {
+            if (!(date instanceof Date)) date = new Date(date);
             let h = date.getHours(); let m = date.getMinutes();
             const ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
             return `${ampm} ${h}:${m.toString().padStart(2, '0')}`;
         }
+
         function saveTarget() { localStorage.setItem('targetSleepTime', document.getElementById('targetTime').value); displayLogs(); }
         function loadTarget() { const saved = localStorage.getItem('targetSleepTime'); if(saved) document.getElementById('targetTime').value = saved; }
         
@@ -127,61 +147,61 @@
             timeInput.value = '';
         }
         function saveLog(log) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            let logs = getSafeLogs();
             logs.push(log);
-            localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
             displayLogs();
         }
         function deleteLog(id) { if (confirm('削除しますか？')) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
-            localStorage.setItem('myLogsSimple', JSON.stringify(logs.filter(l => l.id !== id)));
+            let logs = getSafeLogs();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.filter(l => l.id !== id)));
             displayLogs();
         }}
         function updateRawNoConfirm(id, newDateObj) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            let logs = getSafeLogs();
             const idx = logs.findIndex(l => l.id === id);
             if (idx !== -1) {
                 logs[idx].rawTimestamp = newDateObj.getTime();
                 logs[idx].hideTime = false;
-                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
                 displayLogs();
             }
         }
         function editTodoText(id) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            let logs = getSafeLogs();
             const idx = logs.findIndex(l => l.id === id);
             if (idx !== -1) {
                 const newText = prompt("ToDoを編集:", logs[idx].type);
                 if (newText !== null && newText.trim() !== "") {
                     logs[idx].type = newText;
-                    localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
                     displayLogs();
                 }
             }
         }
         function updateTodoEst(id, newEst) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            let logs = getSafeLogs();
             const idx = logs.findIndex(l => l.id === id);
             if (idx !== -1) {
                 logs[idx].est = newEst;
-                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
             }
         }
         function toggleTodo(id) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            let logs = getSafeLogs();
             const idx = logs.findIndex(l => l.id === id);
             if (idx !== -1) {
                 logs[idx].completed = !logs[idx].completed;
-                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
                 displayLogs();
             }
         }
         function toggleHide(id) {
-            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            let logs = getSafeLogs();
             const idx = logs.findIndex(l => l.id === id);
             if (idx !== -1) {
                 logs[idx].hideTime = !logs[idx].hideTime;
-                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
                 displayLogs();
             }
         }
@@ -189,10 +209,10 @@
         function displayLogs() {
             const container = document.getElementById('logContainer');
             if (!container) return;
-            const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const logs = getSafeLogs();
             container.innerHTML = '';
             
-            const targetVal = document.getElementById('targetTime').value;
+            const targetVal = document.getElementById('targetTime').value || "00:30";
             const [tH, tM] = targetVal.split(':').map(Number);
             const today = new Date();
             const todayKey = `${today.getMonth()+1}月${today.getDate()}日`;
@@ -201,7 +221,6 @@
             logs.forEach(log => {
                 const d = new Date(log.rawTimestamp);
                 let dateKey = `${d.getMonth()+1}月${d.getDate()}日`;
-                // 未完了ToDoのみ今日のグループへ
                 if (log.isTodo && !log.completed) dateKey = todayKey;
                 
                 if (!groups[dateKey]) groups[dateKey] = [];
@@ -209,8 +228,8 @@
             });
 
             const sortedKeys = Object.keys(groups).sort((a, b) => {
-                const timeA = groups[a][0].rawTimestamp;
-                const timeB = groups[b][0].rawTimestamp;
+                const timeA = groups[a][0] ? groups[a][0].rawTimestamp : 0;
+                const timeB = groups[b][0] ? groups[b][0].rawTimestamp : 0;
                 return timeB - timeA;
             });
 
@@ -270,7 +289,7 @@
                 container.innerHTML += html;
             });
         }
-        loadTarget(); displayLogs();
+        window.onload = () => { loadTarget(); displayLogs(); };
     </script>
 </body>
 </html>
