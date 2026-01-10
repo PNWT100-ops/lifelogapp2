@@ -52,6 +52,7 @@
         .todo-check { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
         .todo-text { font-size: 14px; font-weight: bold; flex-grow: 1; padding: 0 8px; }
         .todo-text.completed { text-decoration: line-through; color: #94a3b8; font-weight: normal; }
+        .todo-time-input { width: 50px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; text-align: center; }
         
         .type-label { font-weight: bold; font-size: 13px; flex-grow: 1; text-align: left; }
         .time-label { font-family: monospace; font-size: 12px; color: #2563eb; font-weight: bold; width: 75px; text-align: right; }
@@ -76,7 +77,7 @@
         <button class="action-btn btn-sleep" onclick="addLog('就寝')">🌙 就寝</button>
         <button class="action-btn btn-work-start" onclick="addLog('労働開始')">💼 労働開始</button>
         <button class="action-btn btn-work-end" onclick="addLog('労働終了')">💼 労働終了</button>
-        <button class="action-btn btn-start" onclick="addLog('自由時間開始')">🏃 自由時間開始</button>
+        <button class="action-btn btn-start" onclick="addLog('自由時間開始')">🃏 自由時間開始</button>
         <button class="action-btn btn-end" onclick="addLog('自由時間終了')">🛑 自由時間終了</button>
     </div>
     <div class="memo-area">
@@ -109,7 +110,7 @@
         function addMemo(isTodo) {
             const input = document.getElementById('memoInput');
             if (!input.value.trim()) return;
-            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo, completed: false });
+            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo, completed: false, estimatedMinutes: 0 });
             input.value = '';
         }
         function saveLog(log) {
@@ -118,7 +119,7 @@
             localStorage.setItem('myLogsSimple', JSON.stringify(logs));
             displayLogs();
         }
-        function deleteLog(id) { if (confirm('削除しますか？')) {
+        function deleteLog(id) { if (confirm('削除しますか?')) {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             localStorage.setItem('myLogsSimple', JSON.stringify(logs.filter(l => l.id !== id)));
             displayLogs();
@@ -164,6 +165,57 @@
             }
         }
 
+        function updateEstimatedTime(id, minutes) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const idx = logs.findIndex(l => l.id === id);
+            if (idx !== -1) {
+                logs[idx].estimatedMinutes = parseInt(minutes) || 0;
+                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                displayLogs();
+            }
+        }
+
+        function carryOverTodos() {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const now = new Date();
+            
+            // 今日の日付の開始時刻（0時0分0秒）
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+            
+            // 昨日以前の未完了ToDoを取得
+            const incompleteTodos = logs.filter(l => 
+                l.isTodo && !l.completed && l.rawTimestamp < todayStart
+            );
+            
+            // 今日既に引き継がれているToDoのテキストを取得
+            const todayTodos = logs.filter(l => 
+                l.isTodo && l.rawTimestamp >= todayStart
+            ).map(l => l.type);
+            
+            // 重複を避けて未完了ToDoを今日に引き継ぎ
+            let added = false;
+            incompleteTodos.forEach(todo => {
+                // 同じテキストのToDoが今日既に存在しない場合のみ追加
+                if (!todayTodos.includes(todo.type)) {
+                    logs.push({
+                        type: todo.type,
+                        rawTimestamp: todayStart,
+                        id: Date.now() + Math.random(),
+                        hideTime: true,
+                        isTodo: true,
+                        completed: false,
+                        carriedOver: true,
+                        estimatedMinutes: todo.estimatedMinutes || 0
+                    });
+                    added = true;
+                }
+            });
+            
+            if (added) {
+                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+            }
+        }
+
         function displayLogs() {
             const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const container = document.getElementById('logContainer');
@@ -195,9 +247,11 @@
                 if(todos.length > 0) {
                     html += `<div class="section-label">📌 ToDo</div><div class="todo-list">`;
                     todos.forEach(l => {
+                        const estMin = l.estimatedMinutes || 0;
                         html += `<div class="log-item">
                             <input type="checkbox" class="todo-check" ${l.completed ? 'checked' : ''} onclick="toggleTodo(${l.id})">
                             <span class="todo-text ${l.completed ? 'completed' : ''}">${l.type}</span>
+                            <input type="number" class="todo-time-input" value="${estMin}" min="0" placeholder="分" onchange="updateEstimatedTime(${l.id}, this.value)">
                             <button class="icon-btn-wrap" onclick="editTodoText(${l.id})">📝</button>
                             <button class="icon-btn-wrap del-btn" onclick="deleteLog(${l.id})">×</button>
                         </div>`;
@@ -206,7 +260,7 @@
                 }
 
                 // --- タイムログセクション ---
-                html += `<div class="section-label">🕒 タイムログ</div><div class="log-list">`;
+                html += `<div class="section-label">🕐 タイムログ</div><div class="log-list">`;
                 tlogs.forEach(l => {
                     const time24 = `${l.dateObj.getHours().toString().padStart(2,'0')}:${l.dateObj.getMinutes().toString().padStart(2,'0')}`;
                     const dateISO = `${l.dateObj.getFullYear()}-${(l.dateObj.getMonth()+1).toString().padStart(2,'0')}-${l.dateObj.getDate().toString().padStart(2,'0')}`;
@@ -233,7 +287,10 @@
                 container.innerHTML += html;
             });
         }
-        loadTarget(); displayLogs();
+        
+        loadTarget(); 
+        carryOverTodos(); // ページ読み込み時にToDoを引き継ぎ
+        displayLogs();
     </script>
 </body>
 </html>
