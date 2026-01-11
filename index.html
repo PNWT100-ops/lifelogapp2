@@ -225,7 +225,7 @@
             document.querySelectorAll('.todo-item').forEach(item => {
                 // PCのドラッグ&ドロップ
                 item.addEventListener('dragstart', function(e) {
-                    draggedId = parseInt(this.dataset.id);
+                    draggedId = parseFloat(this.dataset.id);
                     this.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
                 });
@@ -250,7 +250,7 @@
                 item.addEventListener('drop', function(e) {
                     e.preventDefault();
                     this.classList.remove('drag-over');
-                    const dropId = parseInt(this.dataset.id);
+                    const dropId = parseFloat(this.dataset.id);
                     
                     if (draggedId !== null && draggedId !== dropId) {
                         reorderTodo(draggedId, dropId);
@@ -267,7 +267,7 @@
                         return;
                     }
                     
-                    touchStartId = parseInt(this.dataset.id);
+                    touchStartId = parseFloat(this.dataset.id);
                     touchStartY = e.touches[0].clientY;
                     touchCurrentElement = this;
                     
@@ -314,7 +314,7 @@
                     console.log('dropElement:', dropElement);
                     
                     if (dropElement) {
-                        const dropId = parseInt(dropElement.dataset.id);
+                        const dropId = parseFloat(dropElement.dataset.id);
                         console.log('Attempting reorder:', touchStartId, '->', dropId);
                         if (touchStartId !== dropId) {
                             reorderTodo(touchStartId, dropId);
