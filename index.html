@@ -49,6 +49,8 @@
         .log-list { border-radius: 0 0 12px 12px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
 
         .log-item { border-bottom: 1px solid #eee; padding: 10px; display: flex; align-items: center; gap: 4px; }
+        .log-item.dragging { opacity: 0.5; }
+        .log-item.drag-over { border-top: 3px solid #a29bfe; }
         
         /* Todo専用スタイル */
         .todo-check { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
@@ -113,7 +115,14 @@
         function addMemo(isTodo) {
             const input = document.getElementById('memoInput');
             if (!input.value.trim()) return;
-            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo, completed: false, estimatedMinutes: 0 });
+            // ToDoの場合、現在の最大sortOrderを取得して+1
+            let sortOrder = 0;
+            if (isTodo) {
+                const logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+                const todoSortOrders = logs.filter(l => l.isTodo && l.sortOrder !== undefined).map(l => l.sortOrder);
+                sortOrder = todoSortOrders.length > 0 ? Math.max(...todoSortOrders) + 1 : 0;
+            }
+            saveLog({ type: input.value, rawTimestamp: Date.now(), id: Date.now(), hideTime: isTodo, isTodo: isTodo, completed: false, estimatedMinutes: 0, sortOrder: sortOrder });
             input.value = '';
         }
         function saveLog(log) {
@@ -178,12 +187,94 @@
             }
         }
 
+        function reorderTodo(dragId, dropId) {
+            let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
+            const dragIdx = logs.findIndex(l => l.id === dragId);
+            const dropIdx = logs.findIndex(l => l.id === dropId);
+            
+            console.log('Reorder called:', {dragId, dropId, dragIdx, dropIdx});
+            
+            if (dragIdx !== -1 && dropIdx !== -1 && logs[dragIdx].isTodo && logs[dropIdx].isTodo) {
+                // sortOrderが未定義の場合は設定
+                if (logs[dragIdx].sortOrder === undefined) {
+                    logs[dragIdx].sortOrder = dragIdx;
+                }
+                if (logs[dropIdx].sortOrder === undefined) {
+                    logs[dropIdx].sortOrder = dropIdx;
+                }
+                
+                console.log('Before swap:', logs[dragIdx].sortOrder, logs[dropIdx].sortOrder);
+                
+                // ドラッグしたアイテムとドロップ先のsortOrderを入れ替え
+                const tempOrder = logs[dragIdx].sortOrder;
+                logs[dragIdx].sortOrder = logs[dropIdx].sortOrder;
+                logs[dropIdx].sortOrder = tempOrder;
+                
+                console.log('After swap:', logs[dragIdx].sortOrder, logs[dropIdx].sortOrder);
+                
+                localStorage.setItem('myLogsSimple', JSON.stringify(logs));
+                displayLogs();
+            } else {
+                console.log('Reorder failed - conditions not met');
+            }
+        }
+
+        // ドラッグ&ドロップ用の変数
+        let draggedId = null;
+
+        function attachDragListeners() {
+            document.querySelectorAll('.todo-item').forEach(item => {
+                item.addEventListener('dragstart', function(e) {
+                    draggedId = parseInt(this.dataset.id);
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                item.addEventListener('dragend', function(e) {
+                    this.classList.remove('dragging');
+                    document.querySelectorAll('.todo-item').forEach(i => {
+                        i.classList.remove('drag-over');
+                    });
+                });
+                
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    this.classList.add('drag-over');
+                });
+                
+                item.addEventListener('dragleave', function(e) {
+                    this.classList.remove('drag-over');
+                });
+                
+                item.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    const dropId = parseInt(this.dataset.id);
+                    
+                    if (draggedId !== null && draggedId !== dropId) {
+                        reorderTodo(draggedId, dropId);
+                    }
+                    draggedId = null;
+                });
+            });
+        }
+
         function carryOverTodos() {
             let logs = JSON.parse(localStorage.getItem('myLogsSimple') || '[]');
             const now = new Date();
             
-            // 今日の日付の開始時刻（0時0分0秒）
+            // 今日の日付の開始時刻(0時0分0秒)
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime();
+            
+            // 最後に引き継ぎを実行した日付をチェック
+            const lastCarryOver = localStorage.getItem('lastCarryOverDate');
+            const todayKey = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+            
+            // 今日既に引き継ぎ済みの場合はスキップ
+            if (lastCarryOver === todayKey) {
+                return;
+            }
             
             // 昨日以前の未完了ToDoを取得
             const incompleteTodos = logs.filter(l => 
@@ -195,11 +286,17 @@
                 l.isTodo && l.rawTimestamp >= todayStart
             ).map(l => l.type);
             
+            // 引き継ぎ対象のToDoテキストリスト
+            const carryOverTexts = [];
+            
             // 重複を避けて未完了ToDoを今日に引き継ぎ
-            let added = false;
             incompleteTodos.forEach(todo => {
                 // 同じテキストのToDoが今日既に存在しない場合のみ追加
-                if (!todayTodos.includes(todo.type)) {
+                if (!todayTodos.includes(todo.type) && !carryOverTexts.includes(todo.type)) {
+                    // sortOrderを取得（新しいToDoの最大値+1）
+                    const maxSortOrder = logs.filter(l => l.isTodo && l.sortOrder !== undefined)
+                        .reduce((max, l) => Math.max(max, l.sortOrder), -1);
+                    
                     logs.push({
                         type: todo.type,
                         rawTimestamp: todayStart,
@@ -208,15 +305,33 @@
                         isTodo: true,
                         completed: false,
                         carriedOver: true,
-                        estimatedMinutes: todo.estimatedMinutes || 0
+                        estimatedMinutes: todo.estimatedMinutes || 0,
+                        sortOrder: maxSortOrder + 1
                     });
-                    added = true;
+                    carryOverTexts.push(todo.type);
                 }
             });
             
-            if (added) {
+            // 引き継いだToDoと同じテキストの、昨日以前の未完了ToDoを削除
+            if (carryOverTexts.length > 0) {
+                logs = logs.filter(l => {
+                    // ToDo以外はそのまま残す
+                    if (!l.isTodo) return true;
+                    // 完了済みToDoはそのまま残す
+                    if (l.completed) return true;
+                    // 今日のToDoはそのまま残す
+                    if (l.rawTimestamp >= todayStart) return true;
+                    // 昨日以前の未完了ToDoで、引き継ぎ対象のテキストなら削除
+                    if (carryOverTexts.includes(l.type)) return false;
+                    // それ以外は残す
+                    return true;
+                });
+                
                 localStorage.setItem('myLogsSimple', JSON.stringify(logs));
             }
+            
+            // 引き継ぎ実行日を記録
+            localStorage.setItem('lastCarryOverDate', todayKey);
         }
 
         function displayLogs() {
@@ -235,7 +350,12 @@
 
             Object.keys(groups).sort((a, b) => groups[b][0].rawTimestamp - groups[a][0].rawTimestamp).forEach(date => {
                 const dayItems = groups[date].sort((a, b) => a.rawTimestamp - b.rawTimestamp);
-                const todos = dayItems.filter(i => i.isTodo);
+                // ToDoはsortOrder順、タイムログは時系列順
+                const todos = dayItems.filter(i => i.isTodo).sort((a, b) => {
+                    const orderA = a.sortOrder !== undefined ? a.sortOrder : 999999;
+                    const orderB = b.sortOrder !== undefined ? b.sortOrder : 999999;
+                    return orderA - orderB;
+                });
                 const tlogs = dayItems.filter(i => !i.isTodo);
                 
                 let freeMins = 0; let startTime = null;
@@ -251,12 +371,12 @@
                     html += `<div class="section-label">📌 ToDo</div><div class="todo-list">`;
                     todos.forEach(l => {
                         const estMin = l.estimatedMinutes || 0;
-                        html += `<div class="log-item">
-                            <input type="checkbox" class="todo-check" ${l.completed ? 'checked' : ''} onclick="toggleTodo(${l.id})">
+                        html += `<div class="log-item todo-item" draggable="true" data-id="${l.id}">
+                            <input type="checkbox" class="todo-check" ${l.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleTodo(${l.id})">
                             <span class="todo-text ${l.completed ? 'completed' : ''}">${l.type}</span>
-                            <input type="number" class="todo-time-input" value="${estMin}" min="0" placeholder="分" onchange="updateEstimatedTime(${l.id}, this.value)">
-                            <button class="icon-btn-wrap" onclick="editTodoText(${l.id})">📝</button>
-                            <button class="icon-btn-wrap del-btn" onclick="deleteLog(${l.id})">×</button>
+                            <input type="number" class="todo-time-input" value="${estMin}" min="0" placeholder="分" onclick="event.stopPropagation()" onchange="updateEstimatedTime(${l.id}, this.value)">
+                            <button class="icon-btn-wrap" onclick="event.stopPropagation(); editTodoText(${l.id})">📝</button>
+                            <button class="icon-btn-wrap del-btn" onclick="event.stopPropagation(); deleteLog(${l.id})">×</button>
                         </div>`;
                     });
                     html += `</div>`;
@@ -289,6 +409,9 @@
                 html += `</div></div>`;
                 container.innerHTML += html;
             });
+            
+            // ドラッグ&ドロップのイベントリスナーを追加
+            attachDragListeners();
         }
         
         loadTarget(); 
