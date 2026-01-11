@@ -196,18 +196,44 @@
             const dropIdx = logs.findIndex(l => l.id === dropId);
             
             if (dragIdx !== -1 && dropIdx !== -1 && logs[dragIdx].isTodo && logs[dropIdx].isTodo) {
-                // sortOrderが未定義の場合は設定
-                if (logs[dragIdx].sortOrder === undefined) {
-                    logs[dragIdx].sortOrder = dragIdx;
-                }
-                if (logs[dropIdx].sortOrder === undefined) {
-                    logs[dropIdx].sortOrder = dropIdx;
-                }
+                // 同じ日付のToDoのみを取得してソート
+                const draggedItem = logs[dragIdx];
+                const droppedItem = logs[dropIdx];
                 
-                // ドラッグしたアイテムとドロップ先のsortOrderを入れ替え
-                const tempOrder = logs[dragIdx].sortOrder;
-                logs[dragIdx].sortOrder = logs[dropIdx].sortOrder;
-                logs[dropIdx].sortOrder = tempOrder;
+                // 同じ日付のToDoを取得
+                const dragDate = new Date(draggedItem.rawTimestamp);
+                const dragDateKey = `${dragDate.getMonth()}-${dragDate.getDate()}`;
+                
+                const sameDateTodos = logs.filter(l => {
+                    if (!l.isTodo) return false;
+                    const d = new Date(l.rawTimestamp);
+                    const dateKey = `${d.getMonth()}-${d.getDate()}`;
+                    return dateKey === dragDateKey;
+                }).sort((a, b) => {
+                    const orderA = a.sortOrder !== undefined ? a.sortOrder : 999999;
+                    const orderB = b.sortOrder !== undefined ? b.sortOrder : 999999;
+                    return orderA - orderB;
+                });
+                
+                // 現在の並び順でのインデックスを取得
+                const currentDragIdx = sameDateTodos.findIndex(t => t.id === dragId);
+                const currentDropIdx = sameDateTodos.findIndex(t => t.id === dropId);
+                
+                // ドラッグした項目を削除
+                const [removed] = sameDateTodos.splice(currentDragIdx, 1);
+                
+                // ドロップ先の前に挿入
+                // ドラッグした項目がドロップ先より前にあった場合は、インデックスを調整
+                const newDropIdx = currentDragIdx < currentDropIdx ? currentDropIdx - 1 : currentDropIdx;
+                sameDateTodos.splice(newDropIdx, 0, removed);
+                
+                // sortOrderを再割り当て
+                sameDateTodos.forEach((todo, idx) => {
+                    const originalIdx = logs.findIndex(l => l.id === todo.id);
+                    if (originalIdx !== -1) {
+                        logs[originalIdx].sortOrder = idx;
+                    }
+                });
                 
                 localStorage.setItem('myLogsSimple', JSON.stringify(logs));
                 displayLogs();
