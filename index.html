@@ -75,6 +75,8 @@
     </style>
 </head>
 <body>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
     <button class="reload-btn" onclick="location.reload()" title="リロード">🔄</button>
     <div id="nowTime">...</div>
     <div class="settings">目標就寝: <input type="time" id="targetTime" value="00:30" onchange="saveTarget()"></div>
@@ -301,18 +303,24 @@
                 });
                 
                 item.addEventListener('touchend', function(e) {
+                    console.log('touchend fired, touchStartId:', touchStartId);
+                    
                     if (touchStartId === null) return;
                     
                     this.classList.remove('touch-dragging');
                     
                     // drag-overが付いている要素を探す
                     const dropElement = document.querySelector('.todo-item.drag-over');
+                    console.log('dropElement:', dropElement);
                     
                     if (dropElement) {
                         const dropId = parseInt(dropElement.dataset.id);
+                        console.log('Attempting reorder:', touchStartId, '->', dropId);
                         if (touchStartId !== dropId) {
                             reorderTodo(touchStartId, dropId);
                         }
+                    } else {
+                        console.log('No drop element found');
                     }
                     
                     // クリーンアップ
